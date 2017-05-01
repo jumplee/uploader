@@ -4,7 +4,7 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "dev": "./node_modules/.bin/babel src/uploader.js --out-file dist/uploader.js --watch --source-maps",
+    "dev": "./node_modules/.bin/webpack",
     "build": "./node_modules/.bin/babel src/uploader.js --out-file dist/uploader.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
@@ -22,6 +22,9 @@
   "devDependencies": {
     "babel-core": "^6.24.1",
     "babel-loader": "^7.0.0",
+    "babel-preset-env": "^1.4.0",
+    "express": "^4.15.2",
+    "multiparty": "^4.1.3",
     "webpack": "^2.4.1"
   }
 }

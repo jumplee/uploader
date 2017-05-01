@@ -1,12 +1,54 @@
 <!DOCTYPE html>
 <html lang="zh-cn">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta http-equiv="X-UA-Compatible" content="ie=edge">
     <title>Document</title>
+    <script src="http://cdn.bootcss.com/vue/2.3.0/vue.min.js"></script>
 </head>
+
 <body>
-    <script src="../dist/uploader.js"></script>  
+    <div id="app">
+        <button @click="up()">上传</button>
+        <input id="" type="file" @change="selectFile" multiple>
+        <div v-for="file in files">
+            {{file.fileName}}
+        </div>
+        
+    </div>
+    <script src="./uploader.js"></script>
+    <script>
+        var uploader=new Uploader({
+            uploadUrl:'/file/uploading'
+        })
+        var app = new Vue({
+            el: '#app',
+            data: {
+                message: 'Hello Vue!',
+                files:[]
+            },
+            methods:{
+                selectFile:function(e){
+                    var files=e.target.files;
+                    var self=this;
+                    for(var i=0;i<files.length;i++){
+                        var file=files[i]
+                        self.files.push({
+                            fileName:file.name
+                        })
+                        uploader.addFile(file)
+                    }
+                },
+                up:function(){
+                    uploader.upload()
+                }
+            }
+        })
+        
+
+    </script>
 </body>
+
 </html>
