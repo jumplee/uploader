@@ -47,11 +47,10 @@ class Uploader extends Ctrl {
         self.uploadingCounter = 0
         self._beforeLen=0
         self._files = []
+        self._queue = []
         var defaultOptions = {
             uploadUrl: '',
             uuidPrefix: 'file-',
-            //一次性传输完还是多个文件同时传输
-            mutiUpload: false,
             //最多选择数量
             maxSize: 0,
             //同时上传的最多数量
@@ -66,39 +65,41 @@ class Uploader extends Ctrl {
         //浅拷贝，对象属性会覆盖而不是合并
         self.options = Object.assign({}, defaultOptions, options)
     }
+    
     /**
      * 上传
      */
     upload() {
         var self = this
         var options = self.options
-        if (self.options.mutiUpload) {
-
-        } else {
-            // for (var item of self._files) {
-            //     if (item.status !== UPLOAD_STATUS.WAIT) {
-            //         continue
-            //     }
-            //     if (item.status === UPLOAD_STATUS.WAIT && self.uploadingCounter < options.uploadFileMax) {
-            //         self.uploadingCounter++
-
-            //     } else {
-            //         break
-            //     }
-            // }
-            var len = Math.min(self.uploadingCounter + options.uploadFileMax, self._files.length)
-           
+        self._files.forEach((item)=>{
+            if(item.status === UPLOAD_STATUS.UPLOAD_ING ||
+            item.status === UPLOAD_STATUS.FAILED){
+                item.status = UPLOAD_STATUS.WAIT
+            }
+        })
+        self._queue=where('status',(file)=>{
+            return file.status === UPLOAD_STATUS.WAIT
+        },self._files)
+        self._timer=setInterval(function(){
+            var queue=self._queue
+            var len = Math.min(self.uploadingCounter + options.uploadFileMax, queue.length)
             for (var i = self._beforeLen; i < len; i++) {
-                self._upload(self._files[i])
+                self._upload(queue[i])
             }
             self._beforeLen=len
-        }
+            if(self.uploadingCounter + options.uploadFileMax > queue.length){
+                clearInterval(self._timer)
+            }
+            console.log(new Date())
+        },300)
     }
     _upload(file) {
         var self = this
         var options = self.options
         //不是等待状态的就不上传
         if (file.status !== UPLOAD_STATUS.WAIT) {
+            self.uploadingCounter++
             return false
         }
         let xhr = new XMLHttpRequest()
@@ -111,29 +112,35 @@ class Uploader extends Ctrl {
         xhr.send(formData)
         file.status = UPLOAD_STATUS.UPLOAD_ING
         xhr.onreadystatechange = function () {
-            if (xhr.readyState == 4 && xhr.status == 200) {　　　　　　
-                try {
-                    let json = JSON.parse(xhr.responseText)
-                    if (json.success) {
-                        self.onSuccess(file)
-                    } else {
+            if (xhr.readyState == 4) {　　　
+                if(xhr.status == 200){
+                    try {
+                        let json = JSON.parse(xhr.responseText)
+                        if (json.success) {
+                            self.onSuccess(file)
+                        } else {
+                            self.onFail(file)
+                        }
+                    } catch (e) {
                         self.onFail(file)
                     }
-                } catch (e) {
+                }else{
+                    console.log(xhr.status)
                     self.onFail(file)
                 }
+
             }
         }
     }
     onEnd(file) {
-        this.uploadingCounter++
-        
-        if (this.uploadingCounter <= this._files.length) {
-            this.upload()
-        } else {
-            this.uploadingCounter = 0
-            this._beforeLen=0
-            this.trigger('finish')
+        var self=this
+        self.uploadingCounter++
+        // console.log(this.uploadingCounter)
+        if (self.uploadingCounter === self._queue.length) {
+            // console.log(this.uploadingCounter)
+            self.uploadingCounter = 0
+            self._beforeLen=0
+            self.trigger('finish')
         }
 
     }
@@ -166,7 +173,7 @@ class Uploader extends Ctrl {
             return uuid
     }
     getFiles() {
-        return self._files
+        return this._files
     }
 }
 module.exports = Uploader

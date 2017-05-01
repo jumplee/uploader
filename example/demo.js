@@ -1,6 +1,9 @@
 var uploader=new Uploader({
             uploadUrl:'/file/uploading'
         })
+        uploader.on('finish',function(){
+            console.log(this.getFiles())
+        })
         var app = new Vue({
             el: '#app',
             data: {
