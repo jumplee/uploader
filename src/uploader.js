@@ -5,6 +5,38 @@ const UPLOAD_STATUS = {
     SUCESS: 2,
     FAILED: 3
 }
+
+function query(key, value, list) {
+    for (var i = 0; i < list.length; i++) {
+        if (typeof value === 'function') {
+            if (value(list[i])) {
+                return list[i]
+            }
+        } else {
+            if (list[i][key] === value) {
+                return list[i]
+            }
+        }
+
+    }
+}
+
+function where(key, value, list) {
+    var arr = []
+    for (var i = 0; i < list.length; i++) {
+        if (typeof value === 'function') {
+            if (value(list[i])) {
+                arr.push(list[i])
+            }
+        } else {
+            if (list[i][key] === value) {
+                arr.push(list[i])
+            }
+        }
+
+    }
+    return arr
+}
 class Uploader extends Ctrl {
 
     constructor(options) {
@@ -13,6 +45,7 @@ class Uploader extends Ctrl {
         self.xhr = new XMLHttpRequest()
         self.counter = 0
         self.uploadingCounter = 0
+        self._beforeLen=0
         self._files = []
         var defaultOptions = {
             uploadUrl: '',
@@ -24,7 +57,8 @@ class Uploader extends Ctrl {
             //同时上传的最多数量
             uploadFileMax: 5,
             param: {},
-            fileParamName: 'file'
+            fileParamName: 'file',
+            thumb: false
         }
         if (!options.uploadUrl) {
             throw Error('上传地址不能为空')
@@ -41,54 +75,79 @@ class Uploader extends Ctrl {
         if (self.options.mutiUpload) {
 
         } else {
-            for (var item of self._files) {
-                if(item.status === UPLOAD_STATUS.SUCESS || item.status === UPLOAD_STATUS.FAILED){
-                    continue
-                }
-                if (item.status === UPLOAD_STATUS.WAIT && self.uploadingCounter < options.uploadFileMax) {
-                    self.uploadingCounter++
-                        let xhr = new XMLHttpRequest()
-                    let formData = new FormData()
-                    formData.append(options.fileParamName, item.source)
-                    for (key in options.param) {
-                        formData.append(key, options.param[key])
+            // for (var item of self._files) {
+            //     if (item.status !== UPLOAD_STATUS.WAIT) {
+            //         continue
+            //     }
+            //     if (item.status === UPLOAD_STATUS.WAIT && self.uploadingCounter < options.uploadFileMax) {
+            //         self.uploadingCounter++
+
+            //     } else {
+            //         break
+            //     }
+            // }
+            var len = Math.min(self.uploadingCounter + options.uploadFileMax, self._files.length)
+           
+            for (var i = self._beforeLen; i < len; i++) {
+                self._upload(self._files[i])
+            }
+            self._beforeLen=len
+        }
+    }
+    _upload(file) {
+        var self = this
+        var options = self.options
+        //不是等待状态的就不上传
+        if (file.status !== UPLOAD_STATUS.WAIT) {
+            return false
+        }
+        let xhr = new XMLHttpRequest()
+        let formData = new FormData()
+        formData.append(options.fileParamName, file.source)
+        for (key in options.param) {
+            formData.append(key, options.param[key])
+        }
+        xhr.open('post', options.uploadUrl)
+        xhr.send(formData)
+        file.status = UPLOAD_STATUS.UPLOAD_ING
+        xhr.onreadystatechange = function () {
+            if (xhr.readyState == 4 && xhr.status == 200) {　　　　　　
+                try {
+                    let json = JSON.parse(xhr.responseText)
+                    if (json.success) {
+                        self.onSuccess(file)
+                    } else {
+                        self.onFail(file)
                     }
-                    xhr.open('post', options.uploadUrl)
-                    xhr.send(formData)
-                    xhr.onreadystatechange = function () {
-                        if (xhr.readyState == 4 && xhr.status == 200) {　　　　　　
-                            try {
-                                let json = JSON.parse(xhr.responseText)
-                                if (json.success) {
-                                    self.onSuccess(item)
-                                    self.upload()
-                                } else {
-                                    self.onFail(item)
-                                }
-                            } catch (e) {
-                                self.onFail(item)
-                            }
-                        }
-                    }
-                }else{
-                    break
+                } catch (e) {
+                    self.onFail(file)
                 }
             }
-
+        }
+    }
+    onEnd(file) {
+        this.uploadingCounter++
+        
+        if (this.uploadingCounter <= this._files.length) {
+            this.upload()
+        } else {
+            this.uploadingCounter = 0
+            this._beforeLen=0
+            this.trigger('finish')
         }
 
     }
     onSuccess(file) {
         var self = this
         file.status = UPLOAD_STATUS.SUCESS
-        self.uploadingCounter--
-            self.trigger('uploadSuccess', file)
+        self.trigger('uploadSuccess', file)
+        self.onEnd(file)
     }
     onFail(file) {
         var self = this
         file.status = UPLOAD_STATUS.FAILED
-        self.uploadingCounter--
-            self.trigger('uploadFail', file)
+        self.trigger('uploadFail', file)
+        self.onEnd(file)
     }
     addFile(file) {
         var self = this
@@ -106,5 +165,8 @@ class Uploader extends Ctrl {
         this.counter++
             return uuid
     }
+    getFiles() {
+        return self._files
+    }
 }
-module.exports=Uploader
+module.exports = Uploader

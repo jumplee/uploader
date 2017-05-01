@@ -38,7 +38,12 @@ app.post('/file/uploading', function(req, res, next){
 
     res.writeHead(200, {'content-type': 'text/plain;charset=utf-8'});
     res.write('received upload:\n\n');
-    res.end(util.inspect({success: true}));
+    //随机生成一个延迟
+    var timeout=Math.ceil(Math.random()*10)+3
+    setTimeout(function(){
+      res.end(util.inspect({success: true}));
+    },timeout*1000)
+    
  });
 });
 

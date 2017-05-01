@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "./node_modules/.bin/webpack",
     "build": "./node_modules/.bin/babel src/uploader.js --out-file dist/uploader.js",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "server":"node ./server.js"
   },
   "repository": {
     "type": "git",
