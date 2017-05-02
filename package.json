@@ -1,8 +1,8 @@
 {
-  "name": "uploader",
+  "name": "jump-uploader",
   "version": "1.0.0",
   "description": "",
-  "main": "index.js",
+  "main": "dist/uploader.js",
   "scripts": {
     "dev": "./node_modules/.bin/webpack",
     "build": "./node_modules/.bin/babel src/uploader.js --out-file dist/uploader.js",

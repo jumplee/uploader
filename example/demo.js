@@ -10,20 +10,24 @@ var uploader=new Uploader({
                 message: 'Hello Vue!',
                 files:[]
             },
+            created:function(){
+                this.files=uploader.getFiles()
+                console.log(this.files)
+            },
             methods:{
                 selectFile:function(e){
                     var files=e.target.files;
                     var self=this;
                     for(var i=0;i<files.length;i++){
                         var file=files[i]
-                        self.files.push({
-                            fileName:file.name
-                        })
                         uploader.addFile(file)
                     }
                 },
                 up:function(){
                     uploader.upload()
+                },
+                del:function(file){
+                    uploader.removeFile(file)
                 }
             }
         })

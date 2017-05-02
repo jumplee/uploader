@@ -7,24 +7,35 @@
     <meta http-equiv="X-UA-Compatible" content="ie=edge">
     <title>Document</title>
     <script src="http://cdn.bootcss.com/vue/2.3.0/vue.min.js"></script>
+    <style>
+        .image-item{
+            display: inline-block;
+            width:20%;
+        }
+        .image-item img{
+            width:100%;
+        }
+    </style>
 </head>
 
 <body>
     <div id="app">
         <button @click="up()">上传</button>
         <input id="" type="file" @change="selectFile" multiple>
-        <div v-for="file in files">
-            {{file.fileName}}
+        <div class="image-list">
+            <div class="image-item" v-for="file in files">
+                <div>{{file.source.name}}
+                    <span style="color:crimson" @click="del(file)">删除</span>
+                    <template v-if="file.status===2">
+                        <span>上传成功</span>
+                    </template>
+                </div>
+                <img :src="file.thumb" alt="" />
+            </div>
         </div>
-        
     </div>
     <script src="./uploader.js"></script>
     <script src="./demo.js"></script>
-    <script>
-        
-        
-
-    </script>
 </body>
 
 </html>
