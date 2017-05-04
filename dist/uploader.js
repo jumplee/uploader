@@ -136,6 +136,8 @@ exports.default = Ctrl;
 "use strict";
 
 
+var _typeof = typeof Symbol === "function" && typeof Symbol.iterator === "symbol" ? function (obj) { return typeof obj; } : function (obj) { return obj && typeof Symbol === "function" && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : typeof obj; };
+
 var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
 
 var _ctrl = __webpack_require__(0);
@@ -156,7 +158,12 @@ var UPLOAD_STATUS = {
     SUCESS: 2,
     FAILED: 3
 };
-
+var isDebug = true;
+function log(info) {
+    if (isDebug) {
+        console.log(info);
+    }
+}
 function query(key, value, list) {
     for (var i = 0; i < list.length; i++) {
         if (typeof value === 'function') {
@@ -214,20 +221,14 @@ var Uploader = function (_Ctrl) {
             uploadFileMax: 5,
             param: {},
             fileParamName: 'file',
-            //简单thumb模式，只是将图片文件通过而不压缩
-            simpleThumb: true,
+            //只接受类型或者正则
+            /**
+             * @example
+             * accept:'jpg,png,bmp,gif,jpeg'
+             * accept:'xls,doc,docx,ppt,pptx'
+             */
+            accept: '',
             thumb: {
-                width: 110,
-                height: 110,
-                quality: 70,
-                allowMagnify: true,
-                crop: true,
-                preserveHeaders: false,
-                // 为空的话则保留原有图片格式。
-                // 否则强制转换成指定的类型。
-                // IE 8下面 base64 大小不能超过 32K 否则预览失败，而非 jpeg 编码的图片很可
-                // 能会超过 32k, 所以这里设置成预览的时候都是 image/jpeg
-                type: 'image/jpeg',
                 defaultUrl: 'defaultThumb.jpg'
             }
         };
@@ -236,6 +237,14 @@ var Uploader = function (_Ctrl) {
         }
         //浅拷贝，对象属性会覆盖而不是合并
         self.options = Object.assign({}, defaultOptions, options);
+        if (typeof self.options.accept === 'string') {
+            var typeStr = self.options.accept.split(',').join('|');
+            // 黑人❓ 的全局模式g lastIndex会记录上次执行的位置，下次执行的时候从lastIndex开始查询
+            // self.options.acceptReg=new RegExp(`.*\\.(${typeStr})$`,'ig')
+            self.options.acceptReg = new RegExp('.*\\.(' + typeStr + ')$', 'i');
+        } else if (_typeof(self.options.accept) === 'object') {
+            self.options.acceptReg = self.options.accept;
+        }
         return _this;
     }
 
@@ -267,7 +276,7 @@ var Uploader = function (_Ctrl) {
                 if (self.uploadingCounter + options.uploadFileMax > queue.length) {
                     clearInterval(self._timer);
                 }
-                console.log(new Date());
+                log(new Date());
             }, 300);
         }
     }, {
@@ -292,18 +301,20 @@ var Uploader = function (_Ctrl) {
             xhr.onreadystatechange = function () {
                 if (xhr.readyState == 4) {
                     if (xhr.status == 200) {
+                        var json = {};
                         try {
-                            var json = JSON.parse(xhr.responseText);
-                            if (json.success) {
-                                self.onSuccess(file);
-                            } else {
-                                self.onFail(file);
-                            }
+                            json = JSON.parse(xhr.responseText);
                         } catch (e) {
+                            self.onFail(file);
+                            json.success = false;
+                        }
+                        if (json.success) {
+                            self.onSuccess(file, json);
+                        } else {
                             self.onFail(file);
                         }
                     } else {
-                        console.log(xhr.status);
+                        log(xhr.status);
                         self.onFail(file);
                     }
                 }
@@ -314,19 +325,27 @@ var Uploader = function (_Ctrl) {
         value: function onEnd(file) {
             var self = this;
             self.uploadingCounter++;
-            // console.log(this.uploadingCounter)
+            // log(this.uploadingCounter)
             if (self.uploadingCounter === self._queue.length) {
-                // console.log(this.uploadingCounter)
+                // log(this.uploadingCounter)
                 self.uploadingCounter = 0;
                 self._beforeLen = 0;
-                self.trigger('finish');
+                var _flag = true;
+                self._files.forEach(function (item) {
+                    if (item.status === UPLOAD_STATUS.FAILED) {
+                        _flag = false;
+                        return false;
+                    }
+                });
+                self.trigger('finish', _flag);
             }
         }
     }, {
         key: 'onSuccess',
-        value: function onSuccess(file) {
+        value: function onSuccess(file, json) {
             var self = this;
             file.status = UPLOAD_STATUS.SUCESS;
+            file.remoteUrl = json.fileUrl;
             self.trigger('uploadSuccess', file);
             self.onEnd(file);
         }
@@ -343,18 +362,24 @@ var Uploader = function (_Ctrl) {
         value: function addFile(sourceFile) {
             var self = this;
             var options = self.options;
+
+            if (options.acceptReg && !options.acceptReg.test(sourceFile.name)) {
+                log(sourceFile.name + '不在accept设置范围内');
+                return false;
+            }
             var file = {
                 source: sourceFile,
                 id: self.uuid(),
                 status: UPLOAD_STATUS.WAIT,
                 thumb: options.thumb.defaultUrl
             };
+
             self._files.push(file);
-            if (options.simpleThumb) {
-                file.thumb = createObjectURL(sourceFile);
-            } else {
-                if (options.thumb) {
+            if (options.thumb) {
+                if (options.compress) {
                     self._makeThumb(file);
+                } else {
+                    file.thumb = createObjectURL(sourceFile);
                 }
             }
         }
@@ -423,6 +448,11 @@ var Uploader = function (_Ctrl) {
         key: 'getFiles',
         value: function getFiles() {
             return this._files;
+        }
+    }, {
+        key: 'clear',
+        value: function clear() {
+            this._files = [];
         }
     }]);
 

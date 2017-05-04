@@ -1,5 +1,6 @@
 var uploader=new Uploader({
-            uploadUrl:'/file/uploading'
+            uploadUrl:'/file/uploading',
+            accept:'jpg'
         })
         uploader.on('finish',function(){
             console.log(this.getFiles())

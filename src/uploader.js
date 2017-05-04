@@ -5,7 +5,12 @@ const UPLOAD_STATUS = {
     SUCESS: 2,
     FAILED: 3
 }
-
+const isDebug = true
+function log(info){
+    if(isDebug){
+        console.log(info)
+    }
+}
 function query(key, value, list) {
     for (var i = 0; i < list.length; i++) {
         if (typeof value === 'function') {
@@ -60,20 +65,14 @@ class Uploader extends Ctrl {
             uploadFileMax: 5,
             param: {},
             fileParamName: 'file',
-            //简单thumb模式，只是将图片文件通过而不压缩
-            simpleThumb:true,
+            //只接受类型或者正则
+            /**
+             * @example
+             * accept:'jpg,png,bmp,gif,jpeg'
+             * accept:'xls,doc,docx,ppt,pptx'
+             */
+            accept:'',
             thumb: {
-                width: 110,
-                height: 110,
-                quality: 70,
-                allowMagnify: true,
-                crop: true,
-                preserveHeaders: false,
-                // 为空的话则保留原有图片格式。
-                // 否则强制转换成指定的类型。
-                // IE 8下面 base64 大小不能超过 32K 否则预览失败，而非 jpeg 编码的图片很可
-                // 能会超过 32k, 所以这里设置成预览的时候都是 image/jpeg
-                type: 'image/jpeg',
                 defaultUrl: 'defaultThumb.jpg'
             },
         }
@@ -82,6 +81,14 @@ class Uploader extends Ctrl {
         }
         //浅拷贝，对象属性会覆盖而不是合并
         self.options = Object.assign({}, defaultOptions, options)
+        if(typeof self.options.accept === 'string'){
+            let typeStr=self.options.accept.split(',').join('|')
+            // 黑人❓ 的全局模式g lastIndex会记录上次执行的位置，下次执行的时候从lastIndex开始查询
+            // self.options.acceptReg=new RegExp(`.*\\.(${typeStr})$`,'ig')
+            self.options.acceptReg=new RegExp(`.*\\.(${typeStr})$`,'i')
+        }else if(typeof self.options.accept === 'object'){
+            self.options.acceptReg=self.options.accept
+        }
     }
 
     /**
@@ -109,7 +116,7 @@ class Uploader extends Ctrl {
             if (self.uploadingCounter + options.uploadFileMax > queue.length) {
                 clearInterval(self._timer)
             }
-            console.log(new Date())
+            log(new Date())
         }, 300)
     }
     _upload(file) {
@@ -118,7 +125,7 @@ class Uploader extends Ctrl {
         //不是等待状态的就不上传
         if (file.status !== UPLOAD_STATUS.WAIT) {
             self.uploadingCounter++
-                return false
+            return false
         }
         let xhr = new XMLHttpRequest()
         let formData = new FormData()
@@ -132,18 +139,22 @@ class Uploader extends Ctrl {
         xhr.onreadystatechange = function () {
             if (xhr.readyState == 4) {　　　
                 if (xhr.status == 200) {
+                    let json={}
+                    //不要将onSuccess或者onError包括道try中
+                    //避免回调函数中报错触发catch
                     try {
-                        let json = JSON.parse(xhr.responseText)
-                        if (json.success) {
-                            self.onSuccess(file)
-                        } else {
-                            self.onFail(file)
-                        }
+                        json = JSON.parse(xhr.responseText)
                     } catch (e) {
                         self.onFail(file)
+                        json.success=false
+                    }
+                    if (json.success) {
+                            self.onSuccess(file,json)
+                        } else {
+                            self.onFail(file)
                     }
                 } else {
-                    console.log(xhr.status)
+                    log(xhr.status)
                     self.onFail(file)
                 }
 
@@ -153,18 +164,26 @@ class Uploader extends Ctrl {
     onEnd(file) {
         var self = this
         self.uploadingCounter++
-            // console.log(this.uploadingCounter)
+            // log(this.uploadingCounter)
             if (self.uploadingCounter === self._queue.length) {
-                // console.log(this.uploadingCounter)
+                // log(this.uploadingCounter)
                 self.uploadingCounter = 0
                 self._beforeLen = 0
-                self.trigger('finish')
+                let _flag=true
+                self._files.forEach((item)=>{
+                    if(item.status===UPLOAD_STATUS.FAILED){
+                        _flag=false
+                        return false
+                    }
+                })
+                self.trigger('finish',_flag)
             }
 
     }
-    onSuccess(file) {
+    onSuccess(file,json) {
         var self = this
         file.status = UPLOAD_STATUS.SUCESS
+        file.remoteUrl=json.fileUrl
         self.trigger('uploadSuccess', file)
         self.onEnd(file)
     }
@@ -177,19 +196,26 @@ class Uploader extends Ctrl {
     addFile(sourceFile) {
         var self = this
         var options = self.options
+        
+        if(options.acceptReg && !options.acceptReg.test(sourceFile.name)){
+            log(sourceFile.name+'不在accept设置范围内')
+            return false
+        }
         var file = {
             source: sourceFile,
             id: self.uuid(),
             status: UPLOAD_STATUS.WAIT,
             thumb: options.thumb.defaultUrl
         }
+        
         self._files.push(file)
-        if (options.simpleThumb) {
-            file.thumb=createObjectURL(sourceFile)
-        }else{
-            if(options.thumb){
+        if (options.thumb) {
+            if(options.compress){
                 self._makeThumb(file)
+            }else{
+                file.thumb=createObjectURL(sourceFile)
             }
+            
         }
     }
     removeFile(file){
@@ -247,6 +273,9 @@ class Uploader extends Ctrl {
     }
     getFiles() {
         return this._files
+    }
+    clear(){
+        this._files=[]
     }
 }
 module.exports = Uploader
