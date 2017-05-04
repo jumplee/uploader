@@ -4,8 +4,8 @@
   "description": "",
   "main": "dist/uploader.js",
   "scripts": {
-    "dev": "./node_modules/.bin/webpack",
-    "build": "./node_modules/.bin/babel src/uploader.js --out-file dist/uploader.js",
+    "dev": "./node_modules/.bin/webpack --watch --progress",
+    "build": "./node_modules/.bin/webpack",
     "test": "echo \"Error: no test specified\" && exit 1",
     "server":"node ./server.js"
   },

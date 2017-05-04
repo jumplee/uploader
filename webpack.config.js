@@ -10,7 +10,6 @@ module.exports = {
     library:'Uploader',
     libraryTarget: 'umd',
   },
-  watch:true,
   devtool:'source-map',
   module:{
       rules: [{
