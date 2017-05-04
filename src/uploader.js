@@ -5,12 +5,14 @@ const UPLOAD_STATUS = {
     SUCESS: 2,
     FAILED: 3
 }
-const isDebug = true
-function log(info){
-    if(isDebug){
+const isDebug = false
+
+function log(info) {
+    if (isDebug) {
         console.log(info)
     }
 }
+
 function query(key, value, list) {
     for (var i = 0; i < list.length; i++) {
         if (typeof value === 'function') {
@@ -42,8 +44,9 @@ function where(key, value, list) {
     }
     return arr
 }
-function createObjectURL(){
-    return window.URL.createObjectURL.apply(this,arguments)
+
+function createObjectURL() {
+    return window.URL.createObjectURL.apply(this, arguments)
 }
 class Uploader extends Ctrl {
 
@@ -71,7 +74,7 @@ class Uploader extends Ctrl {
              * accept:'jpg,png,bmp,gif,jpeg'
              * accept:'xls,doc,docx,ppt,pptx'
              */
-            accept:'',
+            accept: '',
             thumb: {
                 defaultUrl: 'defaultThumb.jpg'
             },
@@ -81,13 +84,13 @@ class Uploader extends Ctrl {
         }
         //浅拷贝，对象属性会覆盖而不是合并
         self.options = Object.assign({}, defaultOptions, options)
-        if(typeof self.options.accept === 'string'){
-            let typeStr=self.options.accept.split(',').join('|')
+        if (typeof self.options.accept === 'string') {
+            let typeStr = self.options.accept.split(',').join('|')
             // 黑人❓ 的全局模式g lastIndex会记录上次执行的位置，下次执行的时候从lastIndex开始查询
             // self.options.acceptReg=new RegExp(`.*\\.(${typeStr})$`,'ig')
-            self.options.acceptReg=new RegExp(`.*\\.(${typeStr})$`,'i')
-        }else if(typeof self.options.accept === 'object'){
-            self.options.acceptReg=self.options.accept
+            self.options.acceptReg = new RegExp(`.*\\.(${typeStr})$`, 'i')
+        } else if (typeof self.options.accept === 'object') {
+            self.options.acceptReg = self.options.accept
         }
     }
 
@@ -97,6 +100,11 @@ class Uploader extends Ctrl {
     upload() {
         var self = this
         var options = self.options
+        if (self._uploading) {
+            log('上传中...')
+            return false;
+        }
+        self._uploading = true
         self._files.forEach((item) => {
             if (item.status === UPLOAD_STATUS.UPLOAD_ING ||
                 item.status === UPLOAD_STATUS.FAILED) {
@@ -125,7 +133,7 @@ class Uploader extends Ctrl {
         //不是等待状态的就不上传
         if (file.status !== UPLOAD_STATUS.WAIT) {
             self.uploadingCounter++
-            return false
+                return false
         }
         let xhr = new XMLHttpRequest()
         let formData = new FormData()
@@ -139,19 +147,19 @@ class Uploader extends Ctrl {
         xhr.onreadystatechange = function () {
             if (xhr.readyState == 4) {　　　
                 if (xhr.status == 200) {
-                    let json={}
+                    let json = {}
                     //不要将onSuccess或者onError包括道try中
                     //避免回调函数中报错触发catch
                     try {
                         json = JSON.parse(xhr.responseText)
                     } catch (e) {
                         self.onFail(file)
-                        json.success=false
+                        json.success = false
                     }
                     if (json.success) {
-                            self.onSuccess(file,json)
-                        } else {
-                            self.onFail(file)
+                        self.onSuccess(file, json)
+                    } else {
+                        self.onFail(file)
                     }
                 } else {
                     log(xhr.status)
@@ -163,27 +171,28 @@ class Uploader extends Ctrl {
     }
     onEnd(file) {
         var self = this
+        self._uploading = false
         self.uploadingCounter++
-            // log(this.uploadingCounter)
+
             if (self.uploadingCounter === self._queue.length) {
                 // log(this.uploadingCounter)
                 self.uploadingCounter = 0
                 self._beforeLen = 0
-                let _flag=true
-                self._files.forEach((item)=>{
-                    if(item.status===UPLOAD_STATUS.FAILED){
-                        _flag=false
+                let _flag = true
+                self._files.forEach((item) => {
+                    if (item.status === UPLOAD_STATUS.FAILED) {
+                        _flag = false
                         return false
                     }
                 })
-                self.trigger('finish',_flag)
+                self.trigger('finish', _flag)
             }
 
     }
-    onSuccess(file,json) {
+    onSuccess(file, json) {
         var self = this
         file.status = UPLOAD_STATUS.SUCESS
-        file.remoteUrl=json.fileUrl
+        file.remoteUrl = json.fileUrl
         self.trigger('uploadSuccess', file)
         self.onEnd(file)
     }
@@ -196,9 +205,9 @@ class Uploader extends Ctrl {
     addFile(sourceFile) {
         var self = this
         var options = self.options
-        
-        if(options.acceptReg && !options.acceptReg.test(sourceFile.name)){
-            log(sourceFile.name+'不在accept设置范围内')
+
+        if (options.acceptReg && !options.acceptReg.test(sourceFile.name)) {
+            log(sourceFile.name + '不在accept设置范围内')
             return false
         }
         var file = {
@@ -207,28 +216,28 @@ class Uploader extends Ctrl {
             status: UPLOAD_STATUS.WAIT,
             thumb: options.thumb.defaultUrl
         }
-        
+
         self._files.push(file)
         if (options.thumb) {
-            if(options.compress){
+            if (options.compress) {
                 self._makeThumb(file)
-            }else{
-                file.thumb=createObjectURL(sourceFile)
+            } else {
+                file.thumb = createObjectURL(sourceFile)
             }
-            
+
         }
     }
-    removeFile(file){
-        var targetIndex=-1
-        this._files.forEach((item,index)=>{
-            if(item.id===file.id){
-                targetIndex=index
+    removeFile(file) {
+        var targetIndex = -1
+        this._files.forEach((item, index) => {
+            if (item.id === file.id) {
+                targetIndex = index
             }
         })
-        this._files.splice(targetIndex,1)
+        this._files.splice(targetIndex, 1)
     }
     _makeThumb(file) {
-        this.makeThumb(file.source).then((thumbUrl)=>{
+        this.makeThumb(file.source).then((thumbUrl) => {
             file.thumb = thumbUrl
         })
     }
@@ -274,8 +283,8 @@ class Uploader extends Ctrl {
     getFiles() {
         return this._files
     }
-    clear(){
-        this._files=[]
+    clear() {
+        this._files = []
     }
 }
 module.exports = Uploader
