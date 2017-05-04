@@ -1,13 +1,13 @@
 {
   "name": "jump-uploader",
-  "version": "1.0.0",
+  "version": "0.1.1",
   "description": "",
   "main": "dist/uploader.js",
   "scripts": {
     "dev": "./node_modules/.bin/webpack --watch --progress",
     "build": "./node_modules/.bin/webpack",
     "test": "echo \"Error: no test specified\" && exit 1",
-    "server":"node ./server.js"
+    "server": "node ./server.js"
   },
   "repository": {
     "type": "git",

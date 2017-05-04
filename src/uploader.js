@@ -1,7 +1,7 @@
 import Ctrl from './ctrl'
 /**
-    version 0.1 上传组件
-*/
+ * @version 0.1.1 上传组件
+ */
 const isDebug = false
 
 //文件上传状态
@@ -177,11 +177,11 @@ class Uploader extends Ctrl {
     }
     onEnd(file) {
         var self = this
-        self._uploading = false
-        self.uploadingCounter++
 
+        self.uploadingCounter++
+            //所有的文件都执行完毕，未必都成功
             if (self.uploadingCounter === self._queue.length) {
-                // log(this.uploadingCounter)
+                self._uploading = false
                 self.uploadingCounter = 0
                 self._beforeLen = 0
                 let _flag = true

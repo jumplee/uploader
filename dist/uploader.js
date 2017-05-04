@@ -152,13 +152,18 @@ function _possibleConstructorReturn(self, call) { if (!self) { throw new Referen
 
 function _inherits(subClass, superClass) { if (typeof superClass !== "function" && superClass !== null) { throw new TypeError("Super expression must either be null or a function, not " + typeof superClass); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, enumerable: false, writable: true, configurable: true } }); if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : subClass.__proto__ = superClass; }
 
+/**
+    version 0.1 上传组件
+*/
+var isDebug = false;
+
+//文件上传状态
 var UPLOAD_STATUS = {
     WAIT: 0,
     UPLOAD_ING: 1,
     SUCESS: 2,
     FAILED: 3
 };
-var isDebug = false;
 
 function log(info) {
     if (isDebug) {
@@ -218,10 +223,11 @@ var Uploader = function (_Ctrl) {
         var defaultOptions = {
             uploadUrl: '',
             uuidPrefix: 'file-',
-            //最多选择数量
+            //最多选择数量，默认为0不限制
             maxSize: 0,
             //同时上传的最多数量
             uploadFileMax: 5,
+            //向后台传递的参数
             param: {},
             fileParamName: 'file',
             //只接受类型或者正则
@@ -334,11 +340,11 @@ var Uploader = function (_Ctrl) {
         key: 'onEnd',
         value: function onEnd(file) {
             var self = this;
-            self._uploading = false;
-            self.uploadingCounter++;
 
+            self.uploadingCounter++;
+            //所有的文件都上传完或者上传失败了
             if (self.uploadingCounter === self._queue.length) {
-                // log(this.uploadingCounter)
+                self._uploading = false;
                 self.uploadingCounter = 0;
                 self._beforeLen = 0;
                 var _flag = true;
