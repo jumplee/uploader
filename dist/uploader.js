@@ -158,12 +158,14 @@ var UPLOAD_STATUS = {
     SUCESS: 2,
     FAILED: 3
 };
-var isDebug = true;
+var isDebug = false;
+
 function log(info) {
     if (isDebug) {
         console.log(info);
     }
 }
+
 function query(key, value, list) {
     for (var i = 0; i < list.length; i++) {
         if (typeof value === 'function') {
@@ -193,6 +195,7 @@ function where(key, value, list) {
     }
     return arr;
 }
+
 function createObjectURL() {
     return window.URL.createObjectURL.apply(this, arguments);
 }
@@ -258,6 +261,11 @@ var Uploader = function (_Ctrl) {
         value: function upload() {
             var self = this;
             var options = self.options;
+            if (self._uploading) {
+                log('上传中...');
+                return false;
+            }
+            self._uploading = true;
             self._files.forEach(function (item) {
                 if (item.status === UPLOAD_STATUS.UPLOAD_ING || item.status === UPLOAD_STATUS.FAILED) {
                     item.status = UPLOAD_STATUS.WAIT;
@@ -302,6 +310,8 @@ var Uploader = function (_Ctrl) {
                 if (xhr.readyState == 4) {
                     if (xhr.status == 200) {
                         var json = {};
+                        //不要将onSuccess或者onError包括道try中
+                        //避免回调函数中报错触发catch
                         try {
                             json = JSON.parse(xhr.responseText);
                         } catch (e) {
@@ -324,8 +334,9 @@ var Uploader = function (_Ctrl) {
         key: 'onEnd',
         value: function onEnd(file) {
             var self = this;
+            self._uploading = false;
             self.uploadingCounter++;
-            // log(this.uploadingCounter)
+
             if (self.uploadingCounter === self._queue.length) {
                 // log(this.uploadingCounter)
                 self.uploadingCounter = 0;

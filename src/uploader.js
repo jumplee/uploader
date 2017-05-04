@@ -1,11 +1,16 @@
 import Ctrl from './ctrl'
+/**
+    version 0.1 上传组件
+*/
+const isDebug = false
+
+//文件上传状态
 const UPLOAD_STATUS = {
     WAIT: 0,
     UPLOAD_ING: 1,
     SUCESS: 2,
     FAILED: 3
 }
-const isDebug = false
 
 function log(info) {
     if (isDebug) {
@@ -62,10 +67,11 @@ class Uploader extends Ctrl {
         var defaultOptions = {
             uploadUrl: '',
             uuidPrefix: 'file-',
-            //最多选择数量
+            //最多选择数量，默认为0不限制
             maxSize: 0,
             //同时上传的最多数量
             uploadFileMax: 5,
+            //向后台传递的参数
             param: {},
             fileParamName: 'file',
             //只接受类型或者正则
