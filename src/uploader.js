@@ -198,7 +198,7 @@ class Uploader extends Ctrl {
     onSuccess(file, json) {
         var self = this
         file.status = UPLOAD_STATUS.SUCESS
-        file.remoteUrl = json.fileUrl
+        file.returnJson = json
         self.trigger('uploadSuccess', file)
         self.onEnd(file)
     }

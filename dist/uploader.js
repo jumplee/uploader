@@ -153,8 +153,8 @@ function _possibleConstructorReturn(self, call) { if (!self) { throw new Referen
 function _inherits(subClass, superClass) { if (typeof superClass !== "function" && superClass !== null) { throw new TypeError("Super expression must either be null or a function, not " + typeof superClass); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, enumerable: false, writable: true, configurable: true } }); if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : subClass.__proto__ = superClass; }
 
 /**
-    version 0.1 上传组件
-*/
+ * @version 0.1.1 上传组件
+ */
 var isDebug = false;
 
 //文件上传状态
@@ -342,7 +342,7 @@ var Uploader = function (_Ctrl) {
             var self = this;
 
             self.uploadingCounter++;
-            //所有的文件都上传完或者上传失败了
+            //所有的文件都执行完毕，未必都成功
             if (self.uploadingCounter === self._queue.length) {
                 self._uploading = false;
                 self.uploadingCounter = 0;
@@ -362,7 +362,7 @@ var Uploader = function (_Ctrl) {
         value: function onSuccess(file, json) {
             var self = this;
             file.status = UPLOAD_STATUS.SUCESS;
-            file.remoteUrl = json.fileUrl;
+            file.returnJson = json;
             self.trigger('uploadSuccess', file);
             self.onEnd(file);
         }
